@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
 
@@ -55,14 +56,55 @@ function getDailyQuote(): string {
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
-    const model = searchParams.get('model') || DEFAULT_MODEL;
-    const customMsg = searchParams.get('msg') || '';
-    const themeName = searchParams.get('theme') || 'dark';
-    const avatarType = searchParams.get('avatar') || 'boy';
-    const task = searchParams.get('task') || 'Upload your schedule';
-    const subtask = searchParams.get('subtask') || 'Start learning today!';
-    const category = searchParams.get('category') || '';
-    const difficulty = searchParams.get('difficulty') || '';
+    const uid = searchParams.get('uid');
+
+    let model = searchParams.get('model') || DEFAULT_MODEL;
+    let customMsg = searchParams.get('msg') || '';
+    let themeName = searchParams.get('theme') || 'dark';
+    let avatarType = searchParams.get('avatar') || 'boy';
+    let task = searchParams.get('task') || 'Upload your schedule';
+    let subtask = searchParams.get('subtask') || 'Start learning today!';
+    let category = searchParams.get('category') || '';
+    let difficulty = searchParams.get('difficulty') || '';
+
+    if (uid && uid !== 'default') {
+        try {
+            const supabase = await createClient();
+
+            // 1. Fetch Preferences
+            const { data: prefs } = await supabase
+                .from('preferences')
+                .select('*')
+                .eq('user_id', uid)
+                .single();
+
+            if (prefs) {
+                themeName = searchParams.get('theme') || prefs.theme || 'dark';
+                avatarType = searchParams.get('avatar') || prefs.avatar_type || 'boy';
+                customMsg = searchParams.get('msg') || prefs.custom_message || '';
+            }
+
+            // 2. Fetch Today's Task
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            const { data: schedules } = await supabase
+                .from('schedules')
+                .select('*')
+                .eq('user_id', uid)
+                .gte('date', todayStr)
+                .order('date', { ascending: true })
+                .limit(1);
+
+            if (schedules && schedules.length > 0) {
+                const s = schedules[0];
+                task = searchParams.get('task') || s.task;
+                subtask = searchParams.get('subtask') || (s.subtask || '');
+                category = searchParams.get('category') || (s.category || '');
+                difficulty = searchParams.get('difficulty') || (s.difficulty || 'medium');
+            }
+        } catch (e) {
+            console.error('Error fetching from Supabase for wallpaper:', e);
+        }
+    }
 
     const phone = PHONE_MODELS[model] || PHONE_MODELS[DEFAULT_MODEL];
     const { w, h } = phone;
