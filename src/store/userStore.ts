@@ -13,6 +13,7 @@ interface UserStoreState {
     streak: number;
     lastActive: string | null;
     xpEvents: Array<{ action: string; xp: number; date: string }>;
+    setUid: (uid: string) => void;
     addXP: (action: XPEvent['action']) => number;
     checkAndUpdateStreak: () => void;
     getProgress: (totalRows: number, completedRows: number) => number;
@@ -27,6 +28,8 @@ export const useUserStore = create<UserStoreState>()(
             streak: 0,
             lastActive: null,
             xpEvents: [],
+
+            setUid: (uid) => set({ uid }),
 
             addXP: (action) => {
                 const xpDelta = XP_REWARDS[action];

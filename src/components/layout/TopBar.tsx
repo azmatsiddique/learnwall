@@ -1,7 +1,8 @@
 'use client';
 
 import { Flame, Zap, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUserStore } from '@/store/userStore';
@@ -16,9 +17,20 @@ const navItems = [
 ];
 
 export default function TopBar() {
-    const { xp, level, streak } = useUserStore();
+    const { xp, level, streak, setUid } = useUserStore();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const pathname = usePathname();
+
+    useEffect(() => {
+        const supabase = createClient();
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) setUid(session.user.id);
+        });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+            if (session?.user) setUid(session.user.id);
+        });
+        return () => subscription.unsubscribe();
+    }, [setUid]);
 
     return (
         <>
@@ -86,8 +98,8 @@ export default function TopBar() {
                                         <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)}>
                                             <div
                                                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
-                                                        ? 'bg-[var(--primary)]/15 text-[var(--primary)]'
-                                                        : 'text-[var(--muted)] hover:text-white hover:bg-white/5'
+                                                    ? 'bg-[var(--primary)]/15 text-[var(--primary)]'
+                                                    : 'text-[var(--muted)] hover:text-white hover:bg-white/5'
                                                     }`}
                                             >
                                                 <item.icon className="w-5 h-5" />

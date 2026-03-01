@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Upload, Image, LayoutDashboard, Settings, Sparkles, Smartphone, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
+import { useUserStore } from '@/store/userStore';
 
 const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -68,6 +69,8 @@ export default function Sidebar() {
                     onClick={async () => {
                         const supabase = createClient();
                         await supabase.auth.signOut();
+                        // Reset local uid so data doesn't leak to next session
+                        useUserStore.getState().setUid('default');
                         router.push('/login');
                         router.refresh();
                     }}
