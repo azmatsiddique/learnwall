@@ -18,27 +18,34 @@ interface WallpaperState {
 }
 
 // Helper to sync preferences to server
-function syncPrefs(partial: Record<string, string>) {
+async function syncPrefs(partial: Record<string, string>) {
     try {
         const stored = JSON.parse(localStorage.getItem('learnwall-wallpaper') || '{}');
         const state = stored?.state || {};
         // Get uid from userStore
         const userStored = JSON.parse(localStorage.getItem('learnwall-user') || '{}');
         const uid = userStored?.state?.uid || 'default';
-        const prefs = {
-            uid,
-            theme: state.theme || 'dark',
-            avatarType: state.avatarType || 'boy',
-            avatarStyle: state.avatarStyle || 'casual',
-            customMessage: state.customMessage || '',
-            ...partial,
-        };
-        fetch('/api/preferences', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(prefs),
-        }).catch(() => { });
-    } catch { /* ignore */ }
+
+        if (!uid || uid === 'default') return;
+
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+
+        const theme = partial.theme !== undefined ? partial.theme : (state.theme || 'dark');
+        const avatarType = partial.avatarType !== undefined ? partial.avatarType : (state.avatarType || 'boy');
+        const avatarStyle = partial.avatarStyle !== undefined ? partial.avatarStyle : (state.avatarStyle || 'casual');
+        const customMessage = partial.customMessage !== undefined ? partial.customMessage : (state.customMessage || '');
+
+        await supabase.from('preferences').upsert({
+            user_id: uid,
+            theme,
+            avatar_type: avatarType,
+            avatar_style: avatarStyle,
+            custom_message: customMessage
+        });
+    } catch (e) {
+        console.error('Failed to sync preferences direct to Supabase:', e);
+    }
 }
 
 export const useWallpaperStore = create<WallpaperState>()(

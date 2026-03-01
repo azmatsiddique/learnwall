@@ -28,7 +28,7 @@ export const useScheduleStore = create<ScheduleState>()(
             fileName: null,
             todayIndex: -1,
 
-            setSchedule: (rows, errors, fileName) => {
+            setSchedule: async (rows, errors, fileName) => {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 const todayIndex = rows.findIndex(row => {
@@ -39,33 +39,47 @@ export const useScheduleStore = create<ScheduleState>()(
                 });
                 set({ rows, errors, fileName, todayIndex: todayIndex >= 0 ? todayIndex : 0 });
 
-                // Sync to server for wallpaper API access
+                // Sync directly to Supabase from the client
                 const uid = getUid();
-                fetch('/api/schedule', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        uid,
-                        rows: rows.map(r => ({
-                            date: r.date,
-                            task: r.task,
-                            subtask: r.subtask,
-                            difficulty: r.difficulty,
-                            category: r.category,
-                            completed: r.completed,
-                        })),
-                    }),
-                }).catch(() => { });
+                if (uid && uid !== 'default') {
+                    try {
+                        const { createClient } = await import('@/lib/supabase/client');
+                        const supabase = createClient();
+
+                        await supabase.from('schedules').delete().eq('user_id', uid);
+
+                        if (rows.length > 0) {
+                            await supabase.from('schedules').insert(
+                                rows.map(r => ({
+                                    user_id: uid,
+                                    date: r.date,
+                                    task: r.task,
+                                    subtask: r.subtask || '',
+                                    difficulty: r.difficulty || 'medium',
+                                    category: r.category || '',
+                                    completed: r.completed || false
+                                }))
+                            );
+                        }
+                    } catch (e) {
+                        console.error('Failed to sync schedule direct to Supabase:', e);
+                    }
+                }
             },
 
-            clearSchedule: () => {
+            clearSchedule: async () => {
                 set({ rows: [], errors: [], fileName: null, todayIndex: -1 });
-                // Clear server-side too
-                fetch('/api/schedule', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid: getUid(), rows: [] }),
-                }).catch(() => { });
+                // Clear from Supabase too
+                const uid = getUid();
+                if (uid && uid !== 'default') {
+                    try {
+                        const { createClient } = await import('@/lib/supabase/client');
+                        const supabase = createClient();
+                        await supabase.from('schedules').delete().eq('user_id', uid);
+                    } catch (e) {
+                        console.error('Failed to clear schedule direct from Supabase:', e);
+                    }
+                }
             },
 
             updateRow: (id, updates) => set(state => ({

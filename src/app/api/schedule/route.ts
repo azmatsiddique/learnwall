@@ -39,6 +39,11 @@ export async function POST(request: NextRequest) {
         }
 
         const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log('--- DB API POST ---');
+        console.log('Payload UID:', uid);
+        console.log('Supabase Auth User ID:', user?.id);
+        console.log('-------------------');
 
         // 1. Delete old schedule
         await supabase
