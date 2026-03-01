@@ -48,21 +48,37 @@ export const useScheduleStore = create<ScheduleState>()(
 
                         await supabase.from('schedules').delete().eq('user_id', uid);
 
-                        if (rows.length > 0) {
-                            await supabase.from('schedules').insert(
-                                rows.map(r => ({
-                                    user_id: uid,
-                                    date: r.date,
-                                    task: r.task,
-                                    subtask: r.subtask || '',
-                                    difficulty: r.difficulty || 'medium',
-                                    category: r.category || '',
-                                    completed: r.completed || false
-                                }))
+                        const validRows = rows.filter(r => r.date);
+
+                        if (validRows.length > 0) {
+                            const { error } = await supabase.from('schedules').insert(
+                                validRows.map(r => {
+                                    // strictly format as YYYY-MM-DD in local time to prevent UTC timezone shifting
+                                    const d = r.date instanceof Date ? r.date : new Date(r.date as unknown as string);
+                                    const year = d.getFullYear();
+                                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                                    const day = String(d.getDate()).padStart(2, '0');
+                                    const dateStr = `${year}-${month}-${day}`;
+
+                                    return {
+                                        user_id: uid,
+                                        date: dateStr,
+                                        task: r.task,
+                                        subtask: r.subtask || '',
+                                        difficulty: r.difficulty || 'medium',
+                                        category: r.category || '',
+                                        completed: r.completed || false
+                                    };
+                                })
                             );
+                            if (error) {
+                                console.error('Supabase raw insert error:', error);
+                                alert('Database error saving schedule: ' + error.message);
+                            }
                         }
-                    } catch (e) {
+                    } catch (e: any) {
                         console.error('Failed to sync schedule direct to Supabase:', e);
+                        alert('Sync error: ' + (e?.message || 'Unknown network error'));
                     }
                 }
             },
