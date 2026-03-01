@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
-
-const DATA_DIR = path.join(process.cwd(), '.data');
+import { createClient } from '@/lib/supabase/server';
 
 interface UserPreferences {
     theme: string;
@@ -11,24 +8,29 @@ interface UserPreferences {
     customMessage: string;
 }
 
-function getUserDir(uid: string): string {
-    const safeUid = uid.replace(/[^a-z0-9]/gi, '').substring(0, 16);
-    return path.join(DATA_DIR, safeUid || 'default');
-}
-
-async function ensureDir(dir: string) {
-    try {
-        await fs.mkdir(dir, { recursive: true });
-    } catch { /* exists */ }
-}
-
 export async function readPreferences(uid: string): Promise<UserPreferences> {
+    const defaultPrefs = { theme: 'dark', avatarType: 'boy', avatarStyle: 'casual', customMessage: '' };
+    if (!uid || uid === 'default') return defaultPrefs;
+
     try {
-        const file = path.join(getUserDir(uid), 'preferences.json');
-        const data = await fs.readFile(file, 'utf-8');
-        return JSON.parse(data);
+        const supabase = await createClient();
+        const { data } = await supabase
+            .from('preferences')
+            .select('*')
+            .eq('user_id', uid)
+            .single();
+
+        if (data) {
+            return {
+                theme: data.theme || 'dark',
+                avatarType: data.avatar_type || 'boy',
+                avatarStyle: data.avatar_style || 'casual',
+                customMessage: data.custom_message || ''
+            };
+        }
+        return defaultPrefs;
     } catch {
-        return { theme: 'dark', avatarType: 'boy', avatarStyle: 'casual', customMessage: '' };
+        return defaultPrefs;
     }
 }
 
@@ -36,7 +38,12 @@ export async function readPreferences(uid: string): Promise<UserPreferences> {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const uid = body.uid || 'default';
+        const uid = body.uid;
+
+        if (!uid || uid === 'default') {
+            return NextResponse.json({ success: false, error: 'Unauthorized user ID' }, { status: 401 });
+        }
+
         const prefs: UserPreferences = {
             theme: body.theme || 'dark',
             avatarType: body.avatarType || 'boy',
@@ -44,12 +51,23 @@ export async function POST(request: NextRequest) {
             customMessage: body.customMessage || '',
         };
 
-        const userDir = getUserDir(uid);
-        await ensureDir(userDir);
-        await fs.writeFile(path.join(userDir, 'preferences.json'), JSON.stringify(prefs, null, 2), 'utf-8');
+        const supabase = await createClient();
+
+        const { error } = await supabase
+            .from('preferences')
+            .upsert({
+                user_id: uid,
+                theme: prefs.theme,
+                avatar_type: prefs.avatarType,
+                avatar_style: prefs.avatarStyle,
+                custom_message: prefs.customMessage
+            });
+
+        if (error) throw new Error(error.message);
 
         return NextResponse.json({ success: true, preferences: prefs });
-    } catch {
+    } catch (e: any) {
+        console.error('Preferences Save Error:', e);
         return NextResponse.json({ success: false, error: 'Failed to save preferences' }, { status: 500 });
     }
 }

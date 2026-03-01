@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
-
-const DATA_DIR = path.join(process.cwd(), '.data');
+import { createClient } from '@/lib/supabase/server';
 
 interface ScheduleEntry {
     date: string;
@@ -13,23 +10,18 @@ interface ScheduleEntry {
     completed: boolean;
 }
 
-function getUserDir(uid: string): string {
-    // Sanitize uid to prevent path traversal
-    const safeUid = uid.replace(/[^a-z0-9]/gi, '').substring(0, 16);
-    return path.join(DATA_DIR, safeUid || 'default');
-}
-
-async function ensureDir(dir: string) {
-    try {
-        await fs.mkdir(dir, { recursive: true });
-    } catch { /* exists */ }
-}
-
 export async function readSchedule(uid: string): Promise<ScheduleEntry[]> {
+    if (!uid || uid === 'default') return [];
     try {
-        const file = path.join(getUserDir(uid), 'schedule.json');
-        const data = await fs.readFile(file, 'utf-8');
-        return JSON.parse(data);
+        const supabase = await createClient();
+        const { data } = await supabase
+            .from('schedules')
+            .select('*')
+            .eq('user_id', uid)
+            .order('date', { ascending: true });
+
+        if (!data) return [];
+        return data as ScheduleEntry[];
     } catch {
         return [];
     }
@@ -39,19 +31,50 @@ export async function readSchedule(uid: string): Promise<ScheduleEntry[]> {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const uid = body.uid || 'default';
+        const uid = body.uid;
         const rows: ScheduleEntry[] = body.rows || [];
 
-        const userDir = getUserDir(uid);
-        await ensureDir(userDir);
-        await fs.writeFile(path.join(userDir, 'schedule.json'), JSON.stringify(rows, null, 2), 'utf-8');
+        if (!uid || uid === 'default') {
+            return NextResponse.json({ success: false, error: 'Unauthorized user ID' }, { status: 401 });
+        }
+
+        const supabase = await createClient();
+
+        // 1. Delete old schedule
+        await supabase
+            .from('schedules')
+            .delete()
+            .eq('user_id', uid);
+
+        // 2. Insert new schedule
+        if (rows.length > 0) {
+            const insertData = rows.map(r => ({
+                user_id: uid,
+                date: r.date,
+                task: r.task,
+                subtask: r.subtask || '',
+                difficulty: r.difficulty || 'medium',
+                category: r.category || '',
+                completed: r.completed || false
+            }));
+
+            const { error: insertError } = await supabase
+                .from('schedules')
+                .insert(insertData);
+
+            if (insertError) {
+                console.error('Supabase Insert Error:', insertError);
+                throw new Error(insertError.message);
+            }
+        }
 
         return NextResponse.json({
             success: true,
             count: rows.length,
             message: `Saved ${rows.length} schedule entries for user ${uid}`,
         });
-    } catch {
+    } catch (e: any) {
+        console.error('Schedule Save Error:', e);
         return NextResponse.json(
             { success: false, error: 'Failed to save schedule' },
             { status: 500 }
