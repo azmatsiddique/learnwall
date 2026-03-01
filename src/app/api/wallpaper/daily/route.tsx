@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'edge';
 
@@ -69,10 +69,14 @@ export async function GET(request: NextRequest) {
 
     if (uid && uid !== 'default') {
         try {
-            const supabase = await createClient();
+            // Use standard JS client since Edge API might not have session cookies
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
 
             // 1. Fetch Preferences
-            const { data: prefs } = await supabase
+            const { data: prefs, error: prefsError } = await supabase
                 .from('preferences')
                 .select('*')
                 .eq('user_id', uid)
