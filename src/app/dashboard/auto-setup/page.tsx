@@ -118,16 +118,51 @@ const PHONE_MODELS = [
     },
     {
         group: 'Samsung', models: [
+            { id: 'samsung-s23', label: 'Galaxy S23', res: '1080×2340' },
             { id: 'samsung-s24', label: 'Galaxy S24', res: '1080×2340' },
             { id: 'samsung-s24-plus', label: 'Galaxy S24+', res: '1440×3120' },
             { id: 'samsung-s24-ultra', label: 'Galaxy S24 Ultra', res: '1440×3120' },
+            { id: 'samsung-s26-ultra', label: 'Galaxy S26 Ultra', res: '1440×3120' },
+            { id: 'samsung-a17', label: 'Galaxy A17', res: '1080×2408' },
             { id: 'samsung-a54', label: 'Galaxy A54', res: '1080×2340' },
+            { id: 'samsung-f56', label: 'Galaxy F56 5G', res: '1080×2408' },
+            { id: 'samsung-m33', label: 'Galaxy M33 5G', res: '1080×2408' },
+            { id: 'samsung-m55s', label: 'Galaxy M55s 5G', res: '1080×2400' },
         ]
     },
     {
-        group: 'Pixel', models: [
+        group: 'iQOO', models: [
+            { id: 'iqoo-12', label: 'iQOO 12 5G', res: '1260×2800' },
+            { id: 'iqoo-neo-6', label: 'iQOO Neo 6', res: '1080×2400' },
+            { id: 'iqoo-z6-lite', label: 'iQOO Z6 Lite 5G', res: '1080×2408' },
+        ]
+    },
+    {
+        group: 'Redmi / Xiaomi', models: [
+            { id: 'redmi-k50i', label: 'Redmi K50i 5G', res: '1080×2460' },
+            { id: 'redmi-note-10-pro-max', label: 'Redmi Note 10 Pro Max', res: '1080×2400' },
+            { id: 'redmi-note-10s', label: 'Redmi Note 10S', res: '1080×2400' },
+        ]
+    },
+    {
+        group: 'Oppo / OnePlus', models: [
+            { id: 'oneplus-nord-4', label: 'OnePlus Nord 4', res: '1240×2772' },
+            { id: 'oppo-reno-10', label: 'Oppo Reno 10', res: '1080×2412' },
+            { id: 'oppo-reno-14', label: 'Oppo Reno 14 5G', res: '1080×2412' },
+        ]
+    },
+    {
+        group: 'Vivo', models: [
+            { id: 'vivo-v29', label: 'Vivo V29', res: '1260×2800' },
+            { id: 'vivo-v50', label: 'Vivo V50', res: '1260×2800' },
+        ]
+    },
+    {
+        group: 'Other Androids', models: [
+            { id: 'moto-edge-50-neo', label: 'Moto Edge 50 Neo', res: '1256×2760' },
             { id: 'pixel-8', label: 'Pixel 8', res: '1080×2400' },
             { id: 'pixel-8-pro', label: 'Pixel 8 Pro', res: '1344×2992' },
+            { id: 'realme-9-pro', label: 'Realme 9 Pro', res: '1080×2412' },
         ]
     },
     {
