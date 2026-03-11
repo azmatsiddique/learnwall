@@ -29,28 +29,17 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser();
 
-    const { isWhitelisted } = await import('@/lib/whitelist');
-    const isUserWhitelisted = user ? await isWhitelisted(user.email) : false;
-    const isNotWhitelistedPage = request.nextUrl.pathname === '/not-whitelisted';
     const isAuthPage = request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup';
 
-    // 1. If user is authenticated but NOT whitelisted, redirect to /not-whitelisted
-    // (Except if they are already on /not-whitelisted)
-    if (user && !isUserWhitelisted && !isNotWhitelistedPage && !isAuthPage) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/not-whitelisted';
-        return NextResponse.redirect(url);
-    }
-
-    // 2. Protect dashboard routes — redirect to login if not authenticated
+    // 1. Protect dashboard routes — redirect to login if not authenticated
     if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
         const url = request.nextUrl.clone();
         url.pathname = '/login';
         return NextResponse.redirect(url);
     }
 
-    // 3. Redirect authenticated whitelisted users away from auth pages
-    if (user && isUserWhitelisted && isAuthPage) {
+    // 2. Redirect authenticated users away from auth pages
+    if (user && isAuthPage) {
         const url = request.nextUrl.clone();
         url.pathname = '/dashboard';
         return NextResponse.redirect(url);
